@@ -1,0 +1,123 @@
+<script setup lang="ts">
+import { Head, Link, Form } from '@inertiajs/vue3';
+
+import { dashboard, login, register } from '@/routes';
+import { store } from '@/routes/login';
+import { request } from '@/routes/password';
+
+import InputError from '@/components/InputError.vue';
+import TextLink from '@/components/TextLink.vue';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+
+withDefaults(
+    defineProps<{
+        canRegister: boolean;
+        canResetPassword?: boolean;
+        status?: string;
+    }>(),
+    {
+        canRegister: true,
+        canResetPassword: false,
+    },
+);
+</script>
+
+<template>
+    <!-- <Head title="Welcome">
+        <link rel="preconnect" href="https://rsms.me/" />
+        <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    </Head> -->
+    <div
+        class="flex min-h-screen flex-col items-center p-6 text-[#1b1b18] lg:justify-center lg:p-8"
+        style="background-image: url('/images/hotels.jpg'); background-size: cover; background-position: center;"
+    >
+        <header
+            class="mb-6 w-full max-w-[335px] text-sm not-has-[nav]:hidden lg:max-w-4xl"
+        >
+            <nav class="flex items-center justify-end gap-4">
+                <Link
+                    v-if="$page.props.auth.user"
+                    :href="dashboard()"
+                    class="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                >
+                    Dashboard
+                </Link>
+                <template v-else>
+                    <!-- <Link
+                        :href="login()"
+                        class="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#ececec] hover:border-[#e7e7e735] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
+                    >
+                        Log in
+                    </Link> -->
+                    <Link
+                        v-if="canRegister"
+                        :href="register()"
+                        class="inline-block rounded-sm border-2 border-[#e7e7e735] px-6 py-2 text-base leading-normal text-[#ececec] hover:border-[#e7e7e735] hover:bg-white hover:text-[#1b1b18] transform hover:scale-105 transition-all duration-150 ease-out dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b] dark:hover:bg-white dark:hover:text-[#1b1b18]"
+                    >
+                        Daftar
+                    </Link>
+                </template>
+            </nav>
+        </header>
+        <div class="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
+            <main class="w-full max-w-[335px] lg:max-w-4xl">
+                <div class="w-full overflow-hidden rounded-2xl shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.08)] bg-white dark:bg-[#161615] lg:flex">
+                    <div class="relative shrink-0 w-full lg:w-[320px] bg-[#f8f8f8] p-14 flex items-center justify-center dark:bg-[#1D0002]">
+                        <img class="max-w-[270px] max-h-[310px] object-contain" src="/images/jata-negeri.png" alt="Jata Negeri" />
+                        <div class="absolute inset-0 lg:overflow-hidden dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"></div>
+                    </div>
+
+                    <!-- vertical separator on large screens, horizontal on small -->
+                    <div class="hidden lg:block w-px bg-[#e7e7e7] dark:bg-[#2b2b2b]"></div>
+                    <div class="block lg:hidden h-px bg-[#e7e7e7] dark:bg-[#2b2b2b]"></div>
+
+                    <div class="flex-1 p-6 pb-12 text-[13px] leading-[20px] lg:p-20">
+                        <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">{{ status }}</div>
+                        <h1 class="w-full text-center text-3xl font-extrabold text-black drop-shadow-sm mb-6">Sistem Permohonan Lesen Penginapan</h1>
+
+                        <Form v-bind="store.form()" :reset-on-success="['password']" v-slot="{ errors, processing }" class="flex flex-col gap-6">
+                            <div class="grid gap-6">
+                                <div class="grid gap-2">
+                                    <Label for="email">Alamat Emel</Label>
+                                    <Input id="email" type="email" name="email" required autofocus :tabindex="1" autocomplete="email" placeholder="email@example.com" />
+                                    <InputError :message="errors.email" />
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <div class="flex items-center justify-between">
+                                        <Label for="password">Kata Laluan</Label>
+                                        <TextLink v-if="canResetPassword" :href="request()" class="text-sm" :tabindex="5">Lupa kata laluan?</TextLink>
+                                    </div>
+                                    <Input id="password" type="password" name="password" required :tabindex="2" autocomplete="current-password" placeholder="Kata Laluan" />
+                                    <InputError :message="errors.password" />
+                                </div>
+
+                                <div class="flex items-center justify-between">
+                                    <Label for="remember" class="flex items-center space-x-3">
+                                        <Checkbox id="remember" name="remember" :tabindex="3" />
+                                        <span>Ingat saya</span>
+                                    </Label>
+                                </div>
+
+                                <Button type="submit" class="mt-4 w-full" :tabindex="4" :disabled="processing">
+                                    <Spinner v-if="processing" />
+                                    Log masuk
+                                </Button>
+                            </div>
+
+                            <div class="text-center text-sm text-muted-foreground" v-if="canRegister">
+                                Tiada akaun?
+                                <TextLink :href="register()" :tabindex="5">Daftar</TextLink>
+                            </div>
+                        </Form>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <div class="hidden h-14.5 lg:block"></div>
+    </div>
+</template>

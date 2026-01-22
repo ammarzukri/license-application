@@ -15,6 +15,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { apply as licenseApply } from '@/routes/license';
 import { type NavItem } from '@/types';
 
 import AppLogo from './AppLogo.vue';
@@ -27,7 +28,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Mohon Lesen Penginapan',
-        href: dashboard(),
+        href: licenseApply(),
         icon: BookOpen,
     },
 ];

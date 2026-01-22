@@ -28,7 +28,7 @@ const user = computed(() => page.props.auth?.user ?? null);
         >
             <div class="grid auto-rows-min gap-4 md:grid-cols-3">
                 <div class="mb-8 md:col-span-3">
-                    <h1 class="text-2xl font-bold mb-2 text-[#0d6efd] dark:text-[#4d94ff]">
+                    <h1 class="text-2xl font-bold mb-2 text-[#2563EB] dark:text-[#60A5FA]">
                         Selamat Datang, {{ user?.name ?? '' }}!
                     </h1>
                 </div>

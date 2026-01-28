@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class LicenseApplication extends Model
+{
+    protected $table = 'license_application';
+
+    protected $fillable = [
+        'name',
+        'ic_no',
+        'birth_date',
+        'birth_place',
+        'gender',
+        'citizenship',
+        'religion',
+        'ethnicity',
+        'maritial_status',
+        'occupation',
+        'income',
+        'home_address',
+        'postcode',
+        'state',
+        'district',
+        'phone_number',
+        'email',
+        'company_name',
+        'company_address',
+        'company_postcode',
+        'company_state',
+        'company_district',
+        'company_phone',
+        'company_registration_number',
+        'company_registration_date',
+        'company_registration_expiry_date',
+        'employee_malay',
+        'employee_chinese',
+        'employee_indian',
+        'employee_others',
+        'company_operation_start',
+        'company_operation_end',
+        'company_address_hq',
+        'company_postcode_hq',
+        'company_state_hq',
+        'company_district_hq',
+        'company_phone_hq',
+    ];
+
+    public function licenseTypes()
+    {
+        return $this->hasMany(LicenseType::class, 'license_application_id');
+    }
+
+    public function advertisementInfos()
+    {
+        return $this->hasMany(AdvertisementInfo::class, 'license_application_id');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(LicenseDocument::class, 'license_application_id');
+    }
+}

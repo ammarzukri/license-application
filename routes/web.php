@@ -21,4 +21,8 @@ Route::get('/license/apply', [LicenseApplicationController::class, 'create'])
     ->middleware(['auth'])
     ->name('license.apply');
 
+Route::post('/license/apply', [LicenseApplicationController::class, 'store'])
+    ->middleware(['auth'])
+    ->name('license.apply.store');
+
 require __DIR__.'/settings.php';

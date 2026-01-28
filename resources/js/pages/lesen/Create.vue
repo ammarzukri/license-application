@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboard } from '@/routes'
 import { apply as licenseApply } from '@/routes/license'
@@ -12,6 +12,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 ]
 
 const step = ref(1)
+const isSubmitting = ref(false)
+const submitSuccess = ref('')
+const submitError = ref('')
 
 const stepTitles = [
   'Maklumat Pemohon',
@@ -136,8 +139,68 @@ function prevStep() {
 }
 
 function submitForm() {
-  console.log(form.value)
-  // later → send to backend
+  submitSuccess.value = ''
+  submitError.value = ''
+
+  const documentTypes = [
+    'memorandum',
+    'pelan_lokasi',
+    'pelan_lantai',
+    'surat_perjanjian',
+    'salinan_geran_tanah',
+    'sijil_menduduki_bangunan',
+    'gambar_pemohon',
+    'salinan_kad_pengenalan_pemohon',
+    'senarai_nama_semua_pengendali_makanan',
+    'carta_proses_pengeluaran',
+  ]
+
+  const documentFiles = [
+    form.value.document1File,
+    form.value.document2File,
+    form.value.document3File,
+    form.value.document4File,
+    form.value.document5File,
+    form.value.document6File,
+    form.value.document7File,
+    form.value.document8File,
+    form.value.document9File,
+    form.value.document10File,
+  ]
+
+  const documents = documentTypes
+    .map((document_type, index) => ({
+      document_type,
+      file: documentFiles[index] || null,
+    }))
+    .filter((doc) => doc.file)
+
+  const { license_type, ...companyInfo } = form.value.company_info
+
+  const payload = {
+    applicant_info: form.value.applicant_info,
+    company_info: companyInfo,
+    license_type,
+    advertisement_info: form.value.advertisment_info.dynamic_table_rows,
+    documents,
+  }
+
+  router.post(licenseApply().url, payload, {
+    forceFormData: true,
+    preserveScroll: true,
+    onStart: () => {
+      isSubmitting.value = true
+    },
+    onFinish: () => {
+      isSubmitting.value = false
+    },
+    onSuccess: () => {
+      submitSuccess.value = 'Permohonan berjaya dihantar.'
+    },
+    onError: () => {
+      submitError.value = 'Permohonan gagal dihantar. Sila semak semula borang.'
+    },
+  })
 }
 
 function addAdvertismentRow() {
@@ -236,6 +299,12 @@ function handleDocumentChange(index: number, event: Event) {
       </div>
 
       <div class="flex-1 overflow-auto space-y-6">
+        <div v-if="submitSuccess" class="rounded-xl bg-green-50 text-green-700 border border-green-200 px-4 py-3">
+          {{ submitSuccess }}
+        </div>
+        <div v-if="submitError" class="rounded-xl bg-red-50 text-red-700 border border-red-200 px-4 py-3">
+          {{ submitError }}
+        </div>
         <!-- STEP 1 -->
         <div v-if="step === 1">
           <hr class="my-6 border-t border-gray-200" />
@@ -845,9 +914,9 @@ function handleDocumentChange(index: number, event: Event) {
 
           <button v-if="step === 5"
                   @click="submitForm"
-                  :disabled="!form.declaration.agree"
+                  :disabled="!form.declaration.agree || isSubmitting"
                   class="px-4 py-2 bg-black text-white rounded-xl cursor-pointer">
-            Hantar Permohonan
+            {{ isSubmitting ? 'Sedang dihantar...' : 'Hantar Permohonan' }}
           </button>
         </div>
       </div>

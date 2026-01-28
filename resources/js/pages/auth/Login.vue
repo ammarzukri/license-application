@@ -22,6 +22,7 @@ defineProps<{
 
 <template>
     <AuthBase
+    style="background-image: url('/images/hotels.jpg'); background-size: cover; background-position: center;"
         title="Log in to your account"
         description="Enter your email and password below to log in"
     >

@@ -11,7 +11,25 @@ class LicenseApplicationController extends Controller
 {
     public function create()
     {
+        $existingApplication = LicenseApplication::where('user_id', auth()->id())->first();
+        if ($existingApplication) {
+            return redirect()->route('license.status');
+        }
+
         return Inertia::render('lesen/Create');
+    }
+
+    public function status()
+    {
+        $application = LicenseApplication::with('licenseTypes')
+            ->where('user_id', auth()->id())
+            ->latest('id')
+            ->first();
+
+        return Inertia::render('lesen/Status', [
+            'application' => $application,
+            'licenseTypes' => $application?->licenseTypes ?? [],
+        ]);
     }
 
     public function store(Request $request)
@@ -32,6 +50,7 @@ class LicenseApplicationController extends Controller
 
             $licenseApplication = LicenseApplication::create([
                 'name' => $applicant['name'] ?? null,
+                'user_id' => auth()->id(),
                 'ic_no' => $applicant['ic_no'] ?? null,
                 'birth_date' => $applicant['birth_date'] ?? null,
                 'birth_place' => $applicant['birth_place'] ?? null,
@@ -113,6 +132,6 @@ class LicenseApplicationController extends Controller
             }
         });
 
-        return redirect()->route('dashboard')->with('success', 'Permohonan berjaya dihantar.');
+        return redirect()->route('license.status');
     }
 }

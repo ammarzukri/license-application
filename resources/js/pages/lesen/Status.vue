@@ -1,0 +1,104 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { Head } from '@inertiajs/vue3'
+import AppLayout from '@/layouts/AppLayout.vue'
+import type { BreadcrumbItem } from '@/types'
+
+type LicenseApplication = {
+	name?: string
+	ic_no?: string
+	company_name?: string
+	status?: string
+	created_at?: string
+	updated_at?: string
+}
+
+type LicenseType = {
+	aktiviti?: string
+}
+
+const props = defineProps<{
+	application?: LicenseApplication | null
+	licenseTypes?: LicenseType[]
+}>()
+
+const breadcrumbs: BreadcrumbItem[] = [
+	{ title: 'Dashboard', href: '/dashboard' },
+	{ title: 'Status Permohonan', href: '#' },
+]
+
+const activityList = computed(() =>
+	(props.licenseTypes ?? [])
+		.map((item) => item.aktiviti)
+		.filter((value): value is string => Boolean(value && value.trim()))
+)
+
+const statusLabel = computed(() => props.application?.status || 'Dalam Proses')
+</script>
+
+<template>
+	<Head title="Status Permohonan" />
+
+	<AppLayout :breadcrumbs="breadcrumbs">
+		<div class="w-full h-full flex flex-col p-6 bg-white dark:bg-black rounded-xl shadow dark:shadow-black/30">
+			<div class="flex-1 overflow-auto space-y-6">
+				<div class="rounded-xl bg-blue-50 text-blue-700 border border-blue-200 px-4 py-3 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900">
+					Permohonan anda telah direkodkan. Anda hanya boleh memohon sekali.
+				</div>
+
+				<div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-6">
+					<div class="flex items-center justify-between flex-wrap gap-4 mb-6">
+						<div>
+							<h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Status Permohonan</h2>
+							<p class="text-sm text-slate-600 dark:text-slate-400">Ringkasan maklumat permohonan anda</p>
+						</div>
+						<div class="px-3 py-1 rounded-full text-sm font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+							{{ statusLabel }}
+						</div>
+					</div>
+
+					<div v-if="application" class="space-y-8">
+						<section>
+							<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Maklumat Pemohon</h3>
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div>
+									<div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Nama Pemohon</div>
+									<div class="text-sm text-slate-900 dark:text-slate-100">{{ application.name || '-' }}</div>
+								</div>
+								<div>
+									<div class="text-xs font-semibold text-slate-600 dark:text-slate-400">No Kad Pengenalan</div>
+									<div class="text-sm text-slate-900 dark:text-slate-100">{{ application.ic_no || '-' }}</div>
+								</div>
+								<div>
+									<div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Nama Perniagaan / Syarikat</div>
+									<div class="text-sm text-slate-900 dark:text-slate-100">{{ application.company_name || '-' }}</div>
+								</div>
+								<div>
+									<div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Status Permohonan</div>
+									<div class="text-sm text-slate-900 dark:text-slate-100">{{ statusLabel }}</div>
+								</div>
+							</div>
+						</section>
+
+						<section>
+							<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Aktiviti Lesen</h3>
+							<div class="space-y-3">
+								<div v-if="activityList.length" class="space-y-2">
+									<div v-for="(activity, idx) in activityList" :key="`activity-${idx}`" class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+										<div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Aktiviti #{{ idx + 1 }}</div>
+										<div class="text-sm text-slate-900 dark:text-slate-100">{{ activity }}</div>
+									</div>
+								</div>
+								<div v-else class="text-sm text-slate-600 dark:text-slate-400">Tiada aktiviti direkodkan.</div>
+							</div>
+						</section>
+					</div>
+
+					<div v-else class="text-sm text-slate-600 dark:text-slate-400">
+						Tiada rekod permohonan ditemui.
+					</div>
+				</div>
+			</div>
+		</div>
+	</AppLayout>
+</template>

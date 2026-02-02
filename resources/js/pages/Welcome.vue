@@ -66,7 +66,7 @@ withDefaults(
         <div class="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
             <main class="w-full max-w-[335px] lg:max-w-4xl">
                 <div class="w-full overflow-hidden rounded-2xl shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.08)] bg-white dark:bg-[#161615] lg:flex">
-                    <div class="relative shrink-0 w-full lg:w-[320px] bg-[#f8f8f8] p-14 flex items-center justify-center dark:bg-[#1D0002]">
+                    <div class="relative shrink-0 w-full lg:w-[320px] bg-[#f8f8f8] p-14 flex items-center justify-center dark:bg-[#161615]">
                         <img class="max-w-[270px] max-h-[310px] object-contain" src="/images/jata-negeri.png" alt="Jata Negeri" />
                         <div class="absolute inset-0 lg:overflow-hidden dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"></div>
                     </div>
@@ -77,22 +77,22 @@ withDefaults(
 
                     <div class="flex-1 p-6 pb-12 text-[13px] leading-[20px] lg:p-20">
                         <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">{{ status }}</div>
-                        <h1 class="w-full text-center text-3xl font-extrabold text-black drop-shadow-sm mb-6">Sistem Permohonan Lesen Penginapan</h1>
+                        <h1 class="w-full text-center text-3xl font-extrabold text-black dark:text-white drop-shadow-sm mb-6">Sistem Permohonan Lesen Penginapan</h1>
 
                         <Form v-bind="store.form()" :reset-on-success="['password']" v-slot="{ errors, processing }" class="flex flex-col gap-6">
                             <div class="grid gap-6">
                                 <div class="grid gap-2">
-                                    <Label for="email">Alamat Emel</Label>
-                                    <Input id="email" type="email" name="email" required autofocus :tabindex="1" autocomplete="email" placeholder="email@example.com" />
+                                    <Label for="email" class="text-slate-700 dark:text-slate-200">Alamat Emel</Label>
+                                    <Input id="email" type="email" name="email" required autofocus :tabindex="1" autocomplete="email" placeholder="email@example.com" class="dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" />
                                     <InputError :message="errors.email" />
                                 </div>
 
                                 <div class="grid gap-2">
                                     <div class="flex items-center justify-between">
-                                        <Label for="password">Kata Laluan</Label>
-                                        <TextLink v-if="canResetPassword" :href="request()" class="text-sm" :tabindex="5">Lupa kata laluan?</TextLink>
+                                        <Label for="password" class="text-slate-700 dark:text-slate-200">Kata Laluan</Label>
+                                        <TextLink v-if="canResetPassword" :href="request()" class="text-sm dark:text-slate-200" :tabindex="5">Lupa kata laluan?</TextLink>
                                     </div>
-                                    <Input id="password" type="password" name="password" required :tabindex="2" autocomplete="current-password" placeholder="Kata Laluan" />
+                                    <Input id="password" type="password" name="password" required :tabindex="2" autocomplete="current-password" placeholder="Kata Laluan" class="dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" />
                                     <InputError :message="errors.password" />
                                 </div>
 

@@ -10,6 +10,7 @@ class LicenseApplication extends Model
 
     protected $fillable = [
         'name',
+        'user_id',
         'ic_no',
         'birth_date',
         'birth_place',

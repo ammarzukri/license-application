@@ -21,6 +21,10 @@ Route::get('/license/apply', [LicenseApplicationController::class, 'create'])
     ->middleware(['auth'])
     ->name('license.apply');
 
+Route::get('/license/status', [LicenseApplicationController::class, 'status'])
+    ->middleware(['auth'])
+    ->name('license.status');
+
 Route::post('/license/apply', [LicenseApplicationController::class, 'store'])
     ->middleware(['auth'])
     ->name('license.apply.store');

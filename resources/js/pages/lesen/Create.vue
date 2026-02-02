@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboard } from '@/routes'
@@ -15,6 +15,7 @@ const step = ref(1)
 const isSubmitting = ref(false)
 const submitSuccess = ref('')
 const submitError = ref('')
+let redirectTimeout: ReturnType<typeof setTimeout> | null = null
 
 const stepTitles = [
   'Maklumat Pemohon',
@@ -23,6 +24,45 @@ const stepTitles = [
   'Dokumen Sokongan',
   'Pengesahan',
 ]
+
+const malaysiaStates = [
+  'Johor',
+  'Kedah',
+  'Kelantan',
+  'Melaka',
+  'Negeri Sembilan',
+  'Pahang',
+  'Perak',
+  'Perlis',
+  'Pulau Pinang',
+  'Sabah',
+  'Sarawak',
+  'Selangor',
+  'Terengganu',
+  'Wilayah Persekutuan Kuala Lumpur',
+  'Wilayah Persekutuan Putrajaya',
+  'Wilayah Persekutuan Labuan',
+]
+
+const districtMap: Record<string, string[]> = {
+  Johor: ['Batu Pahat', 'Johor Bahru', 'Kluang', 'Kota Tinggi', 'Mersing', 'Muar', 'Pontian', 'Segamat', 'Tangkak'],
+  Kedah: ['Baling', 'Bandar Baharu', 'Kota Setar', 'Kuala Muda', 'Kubang Pasu', 'Kulim', 'Langkawi', 'Padang Terap', 'Pendang', 'Pokok Sena', 'Sik', 'Yan'],
+  Kelantan: ['Kota Bharu', 'Bachok', 'Pasir Mas', 'Tanah Merah', 'Tumpat', 'Kuala Krai', 'Machang', 'Gua Musang', 'Jeli'],
+  Melaka: ['Alor Gajah', 'Jasin', 'Melaka Tengah'],
+  'Negeri Sembilan': ['Jelebu', 'Jempol', 'Kuala Pilah', 'Port Dickson', 'Rembau', 'Seremban', 'Tampin'],
+  Pahang: ['Bentong', 'Bera', 'Cameron Highlands', 'Jerang', 'Kuantan', 'Lipis', 'Maran', 'Pekan', 'Raub', 'Rompin', 'Temerloh'],
+  Perak: ['Batang Padang', 'Hilir Perak', 'Hulu Perak', 'Kampar', 'Kerian', 'Kinta', 'Kuala Kangsar', 'Larut, Matang dan Selama', 'Manjung', 'Mualim', 'Perak Tengah', 'Bagan Datuk'],
+  Perlis: ['Kangar'],
+  'Pulau Pinang': ['Seberang Perai Utara', 'Seberang Perai Tengah', 'Seberang Perai Selatan', 'Timur Laut', 'Barat Daya'],
+  Sabah: ['Beaufort', 'Beluran', 'Keningau', 'Kinabatangan', 'Kota Belud', 'Kota Kinabalu', 'Kota Marudu', 'Kuala Penyu', 'Kudat', 'Kunak', 'Lahad Datu', 'Nabawan', 'Papar', 'Penampang', 'Pitas', 'Putatan', 'Ranau', 'Sandakan', 'Semporna', 'Sipitang', 'Tambunan', 'Tawau', 'Telupid', 'Tenom', 'Tongod', 'Tuaran'],
+  Sarawak: ['Asajaya', 'Bau', 'Belaga', 'Betong', 'Bintulu', 'Dalat', 'Daro', 'Julau', 'Kabong', 'Kanowit', 'Kapit', 'Kuching', 'Lawas', 'Limbang', 'Lubok Antu', 'Lundu', 'Marudi', 'Matu', 'Meradong', 'Miri', 'Mukah', 'Pakan', 'Samarahan', 'Saratok', 'Sarikei', 'Selangau', 'Serian', 'Sibu', 'Simunjan', 'Song', 'Sri Aman', 'Subis', 'Tatau', 'Tebedu', 'Telang Usan'],
+  Selangor: ['Gombak', 'Hulu Langat', 'Hulu Selangor', 'Klang', 'Kuala Langat', 'Kuala Selangor', 'Petaling', 'Sabak Bernam', 'Sepang'],
+  Terengganu: ['Besut', 'Dungun', 'Hulu Terengganu', 'Kemaman', 'Kuala Nerus', 'Kuala Terengganu', 'Marang'],
+  'Wilayah Persekutuan Kuala Lumpur': ['Kuala Lumpur'],
+  'Wilayah Persekutuan Putrajaya': ['Putrajaya'],
+  'Wilayah Persekutuan Labuan': ['Labuan'],
+}
+
 
 const form = ref({
   applicant_info: {
@@ -129,6 +169,28 @@ watch([ethnicitySelection, customEthnicity], ([selection, custom]) => {
   }
 })
 
+const applicantDistrictOptions = computed(() => districtMap[form.value.applicant_info.state] || [])
+const companyDistrictOptions = computed(() => districtMap[form.value.company_info.company_state] || [])
+const companyHqDistrictOptions = computed(() => districtMap[form.value.company_info.company_state_hq] || [])
+
+watch(() => form.value.applicant_info.state, (state) => {
+  if (!districtMap[state]?.includes(form.value.applicant_info.district)) {
+    form.value.applicant_info.district = ''
+  }
+})
+
+watch(() => form.value.company_info.company_state, (state) => {
+  if (!districtMap[state]?.includes(form.value.company_info.company_district)) {
+    form.value.company_info.company_district = ''
+  }
+})
+
+watch(() => form.value.company_info.company_state_hq, (state) => {
+  if (!districtMap[state]?.includes(form.value.company_info.company_district_hq)) {
+    form.value.company_info.company_district_hq = ''
+  }
+})
+
 function nextStep() {
   // Allow progressing through steps without completing fields
   if (step.value < 5) step.value++
@@ -190,15 +252,27 @@ function submitForm() {
     preserveScroll: true,
     onStart: () => {
       isSubmitting.value = true
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout)
+        redirectTimeout = null
+      }
     },
     onFinish: () => {
       isSubmitting.value = false
     },
     onSuccess: () => {
       submitSuccess.value = 'Permohonan berjaya dihantar.'
+      if (redirectTimeout) clearTimeout(redirectTimeout)
+      redirectTimeout = setTimeout(() => {
+        router.visit(dashboard().url)
+      }, 3000)
     },
     onError: () => {
       submitError.value = 'Permohonan gagal dihantar. Sila semak semula borang.'
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout)
+        redirectTimeout = null
+      }
     },
   })
 }
@@ -281,6 +355,28 @@ function handleDocumentChange(index: number, event: Event) {
       break
   }
 }
+
+function enforceNumericValue(event: Event) {
+  const target = event.target as HTMLInputElement
+  const sanitized = target.value.replace(/\D+/g, '')
+  if (target.value !== sanitized) target.value = sanitized
+  return sanitized
+}
+
+function formatDate(dateStr: string | null | undefined) {
+  if (!dateStr) return ''
+  // Expecting date in YYYY-MM-DD from <input type="date"> — convert to dd/mm/YYYY
+  const parts = String(dateStr).split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+  }
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return String(dateStr)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
 </script>
 
 <template>
@@ -288,78 +384,66 @@ function handleDocumentChange(index: number, event: Event) {
 
   <AppLayout :breadcrumbs="breadcrumbs">
 
-    <div class="w-full h-full flex flex-col p-6 bg-white rounded-xl shadow">
+    <div class="w-full h-full flex flex-col p-6 bg-white dark:bg-black rounded-xl shadow dark:shadow-black/30">
 
       <!-- Step Indicator -->
       <div class="flex justify-between mb-6">
         <div v-for="n in 5" :key="n" class="flex-1 text-center">
-          <div class="font-semibold" :class="step >= n ? 'text-blue-600' : 'text-gray-400'">Step {{ n }}</div>
-          <div class="text-sm mt-1" :class="step >= n ? 'text-blue-500' : 'text-gray-400'">{{ stepTitles[n-1] }}</div>
+          <div class="font-semibold" :class="step >= n ? 'text-blue-600 dark:text-blue-300' : 'text-gray-400 dark:text-slate-500'">Step {{ n }}</div>
+          <div class="text-sm mt-1" :class="step >= n ? 'text-blue-500 dark:text-blue-200' : 'text-gray-400 dark:text-slate-500'">{{ stepTitles[n-1] }}</div>
         </div>
       </div>
 
       <div class="flex-1 overflow-auto space-y-6">
-        <div v-if="submitSuccess" class="rounded-xl bg-green-50 text-green-700 border border-green-200 px-4 py-3">
+        <div v-if="submitSuccess" class="rounded-xl bg-green-50 text-green-700 border border-green-200 px-4 py-3 dark:bg-green-950/40 dark:text-green-300 dark:border-green-900">
           {{ submitSuccess }}
         </div>
-        <div v-if="submitError" class="rounded-xl bg-red-50 text-red-700 border border-red-200 px-4 py-3">
+        <div v-if="submitError" class="rounded-xl bg-red-50 text-red-700 border border-red-200 px-4 py-3 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900">
           {{ submitError }}
         </div>
         <!-- STEP 1 -->
         <div v-if="step === 1">
           <hr class="my-6 border-t border-gray-200" />
-          <h2 class="text-xl font-bold mb-4">Maklumat Pemohon</h2>
+          <h2 class="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Maklumat Pemohon</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Nama Pemohon</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Nama Pemohon</label>
               <input v-model="form.applicant_info.name"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Nama Pemohon" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder=" Masukkan Nama Pemohon" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">No Kad Pengenalan</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">No Kad Pengenalan</label>
               <input v-model="form.applicant_info.ic_no"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="No Kad Pengenalan" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.applicant_info.ic_no = enforceNumericValue($event)"
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan No Kad Pengenalan tanpa (-)" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Tarikh Lahir</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Tarikh Lahir</label>
               <input type="date"
                      v-model="form.applicant_info.birth_date"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Tempat Lahir</label>
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Tempat Lahir</label>
               <select v-model="form.applicant_info.birth_place"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl">
-                <option value="">-- Pilih tempat --</option>
-                <option>Johor</option>
-                <option>Kedah</option>
-                <option>Kelantan</option>
-                <option>Melaka</option>
-                <option>Negeri Sembilan</option>
-                <option>Pahang</option>
-                <option>Perak</option>
-                <option>Perlis</option>
-                <option>Pulau Pinang</option>
-                <option>Sabah</option>
-                <option>Sarawak</option>
-                <option>Selangor</option>
-                <option>Terengganu</option>
-                <option>Wilayah Persekutuan Kuala Lumpur</option>
-                <option>Wilayah Persekutuan Labuan</option>
-                <option>Wilayah Persekutuan Putrajaya</option>
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Negeri --</option>
+                <option v-for="state in malaysiaStates" :key="state" :value="state">{{ state }}</option>
               </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Jantina</label>
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Jantina</label>
               <select v-model="form.applicant_info.gender"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl">
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
                 <option value="">-- Pilih jantina --</option>
                 <option value="lelaki">Lelaki</option>
                 <option value="perempuan">Perempuan</option>
@@ -367,9 +451,9 @@ function handleDocumentChange(index: number, event: Event) {
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Warganegara</label>
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Warganegara</label>
               <select v-model="form.applicant_info.citizenship"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl">
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
                 <option value="">-- Pilih Warganegara --</option>
                 <option value="Warganegara">Warganegara</option>
                 <option value="Bukan Warganegara">Bukan Warganegara</option>
@@ -377,67 +461,67 @@ function handleDocumentChange(index: number, event: Event) {
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Agama</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Agama</label>
               <div class="flex flex-col space-y-2">
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Islam" v-model="religionSelection" />
-                  <span>Islam</span>
+                  <span class="text-slate-700 dark:text-slate-200">Islam</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Buddha" v-model="religionSelection" />
-                  <span>Buddha</span>
+                  <span class="text-slate-700 dark:text-slate-200">Buddha</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Hindu" v-model="religionSelection" />
-                  <span>Hindu</span>
+                  <span class="text-slate-700 dark:text-slate-200">Hindu</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Kristian" v-model="religionSelection" />
-                  <span>Kristian</span>
+                  <span class="text-slate-700 dark:text-slate-200">Kristian</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Lain-lain" v-model="religionSelection" />
-                  <span>Lain-lain</span>
+                  <span class="text-slate-700 dark:text-slate-200">Lain-lain</span>
                 </label>
                 <div v-if="religionSelection === 'Lain-lain'" class="mt-2">
                   <input v-model="customReligion"
                          placeholder="Sila nyatakan"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Bangsa</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Bangsa</label>
               <div class="flex flex-col space-y-2">
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Melayu" v-model="ethnicitySelection" />
-                  <span>Melayu</span>
+                  <span class="text-slate-700 dark:text-slate-200">Melayu</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Cina" v-model="ethnicitySelection" />
-                  <span>Cina</span>
+                  <span class="text-slate-700 dark:text-slate-200">Cina</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="India" v-model="ethnicitySelection" />
-                  <span>India</span>
+                  <span class="text-slate-700 dark:text-slate-200">India</span>
                 </label>
                 <label class="flex items-center">
                   <input class="mr-2" type="radio" value="Lain-lain" v-model="ethnicitySelection" />
-                  <span>Lain-lain</span>
+                  <span class="text-slate-700 dark:text-slate-200">Lain-lain</span>
                 </label>
                 <div v-if="ethnicitySelection === 'Lain-lain'" class="mt-2">
                   <input v-model="customEthnicity"
                          placeholder="Sila nyatakan"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Status Perkahwinan</label>
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Status Perkahwinan</label>
               <select v-model="form.applicant_info.marital_status"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl">
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
                 <option value="">-- Pilih Status --</option>
                 <option value="Bujang">Bujang</option>
                 <option value="Berkahwin">Berkahwin</option>
@@ -448,59 +532,74 @@ function handleDocumentChange(index: number, event: Event) {
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Pekerjaan</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Pekerjaan</label>
               <input v-model="form.applicant_info.occupation"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Pekerjaan" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Pekerjaan" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Pendapatan (RM)</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Pendapatan (RM)</label>
               <input v-model="form.applicant_info.income"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Pendapatan (contoh: 2,000)" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.applicant_info.income = enforceNumericValue($event)"
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Pendapatan (contoh: 2,000)" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Alamat Kediaman Pemohon</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Alamat Kediaman Pemohon</label>
               <input v-model="form.applicant_info.home_address"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Alamat Kediaman Pemohon" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Alamat Kediaman Pemohon" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Poskod</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Poskod</label>
               <input v-model="form.applicant_info.postcode"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Poskod" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.applicant_info.postcode = enforceNumericValue($event)"
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Poskod" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Negeri</label>
-              <input v-model="form.applicant_info.state"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Negeri" />
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Negeri</label>
+              <select v-model="form.applicant_info.state"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Negeri --</option>
+                <option v-for="state in malaysiaStates" :key="`applicant-${state}`" :value="state">{{ state }}</option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Daerah</label>
-              <input v-model="form.applicant_info.district"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Daerah" />
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Daerah</label>
+              <select v-model="form.applicant_info.district"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Daerah --</option>
+                <option v-for="district in applicantDistrictOptions" :key="`applicant-district-${district}`" :value="district">
+                  {{ district }}
+                </option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">No Telefon</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">No Telefon</label>
               <input v-model="form.applicant_info.phone_number"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="No Telefon" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.applicant_info.phone_number = enforceNumericValue($event)"
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan No Telefon" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Emel</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Emel</label>
               <input v-model="form.applicant_info.email"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Emel" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Emel" />
             </div>
           </div>
           <hr class="my-6 border-t border-gray-200" />
@@ -508,171 +607,195 @@ function handleDocumentChange(index: number, event: Event) {
 
         <!-- STEP 2 -->
         <div v-if="step === 2">
-          <hr class="my-6 border-t border-gray-200" />
-          <h2 class="text-xl font-bold mb-4">Maklumat Perniagaan / Syarikat</h2>
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
+          <h2 class="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Maklumat Perniagaan / Syarikat</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Nama Perniagaan / Syarikat</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Nama Perniagaan / Syarikat</label>
               <input v-model="form.company_info.company_name"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Nama Perniagaan / Syarikat" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Nama Perniagaan / Syarikat" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Alamat Perniagaan (Premis)</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Alamat Perniagaan (Premis)</label>
               <input v-model="form.company_info.company_address"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Alamat Perniagaan (Premis)" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Alamat Perniagaan (Premis)" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Poskod</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Poskod</label>
               <input v-model="form.company_info.company_postcode"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Poskod" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.company_info.company_postcode = enforceNumericValue($event)"
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan Poskod" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Negeri</label>
-              <input v-model="form.company_info.company_state"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Negeri" />
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Negeri</label>
+              <select v-model="form.company_info.company_state"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Negeri --</option>
+                <option v-for="state in malaysiaStates" :key="`company-${state}`" :value="state">{{ state }}</option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Daerah</label>
-              <input v-model="form.company_info.company_district"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="Daerah" />
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Daerah</label>
+              <select v-model="form.company_info.company_district"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Daerah --</option>
+                <option v-for="district in companyDistrictOptions" :key="`company-district-${district}`" :value="district">
+                  {{ district }}
+                </option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">No Telefon</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">No Telefon</label>
               <input v-model="form.company_info.company_phone"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="No Telefon" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.company_info.company_phone = enforceNumericValue($event)"
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan No Telefon" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">No Pendaftaran Perniagaan / Syarikat</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">No Pendaftaran Perniagaan / Syarikat</label>
               <input v-model="form.company_info.company_registration_number"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                     placeholder="No Pendaftaran Perniagaan / Syarikat" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                     placeholder="Masukkan No Pendaftaran Perniagaan / Syarikat" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Tarikh Daftar</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Tarikh Daftar</label>
               <input type="date"
                      v-model="form.company_info.company_registration_date"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Tarikh Tamat</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Tarikh Tamat</label>
               <input type="date"
                      v-model="form.company_info.company_registration_expiry_date"
-                     class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
             </div>
 
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium mb-2">Bilangan Pekerja</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Bilangan Pekerja</label>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex items-center">
-                  <label class="w-28 text-sm">Melayu</label>
+                  <label class="w-28 text-sm text-slate-700 dark:text-slate-200">Melayu</label>
                   <input type="number" min="0" v-model="form.company_info.employee_malay"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
 
                 <div class="flex items-center">
-                  <label class="w-28 text-sm">Cina</label>
+                    <label class="w-28 text-sm text-slate-700 dark:text-slate-200">Cina</label>
                   <input type="number" min="0" v-model="form.company_info.employee_chinese"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
 
                 <div class="flex items-center">
-                  <label class="w-28 text-sm">India</label>
+                    <label class="w-28 text-sm text-slate-700 dark:text-slate-200">India</label>
                   <input type="number" min="0" v-model="form.company_info.employee_indian"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
 
                 <div class="flex items-center">
-                  <label class="w-28 text-sm">Lain-lain</label>
+                  <label class="w-28 text-sm text-slate-700 dark:text-slate-200">Lain-lain</label>
                   <input type="number" min="0" v-model="form.company_info.employee_others"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
               </div>
             </div>
 
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium mb-2">Waktu Beroperasi</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Waktu Beroperasi</label>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-xs mb-1">Mula</label>
+                  <label class="block text-xs mb-1 text-slate-600 dark:text-slate-300">Mula</label>
                   <input type="time"
                          v-model="form.company_info.company_operation_start"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
 
                 <div>
-                  <label class="block text-xs mb-1">Tamat</label>
+                  <label class="block text-xs mb-1 text-slate-600 dark:text-slate-300">Tamat</label>
                   <input type="time"
                          v-model="form.company_info.company_operation_end"
-                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl" />
+                         class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                 </div>
               </div>
             </div>
           </div>
 
-          <hr class="my-6 border-t border-gray-200" />
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Alamat Perniagaan (Ibu Pejabat)</label>
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Alamat Perniagaan (Ibu Pejabat)</label>
               <input v-model="form.company_info.company_address_hq"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                      placeholder="Alamat Perniagaan (Ibu Pejabat)" />
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                      placeholder="Masukkan Alamat Perniagaan (Ibu Pejabat)" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Poskod</label>
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Poskod</label>
               <input v-model="form.company_info.company_postcode_hq"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                      placeholder="Poskod" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.company_info.company_postcode_hq = enforceNumericValue($event)"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                      placeholder="Masukkan Poskod" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Negeri</label>
-              <input v-model="form.company_info.company_state_hq"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                      placeholder="Negeri" />
+                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Negeri</label>
+              <select v-model="form.company_info.company_state_hq"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Negeri --</option>
+                <option v-for="state in malaysiaStates" :key="`company-hq-${state}`" :value="state">{{ state }}</option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Daerah</label>
-              <input v-model="form.company_info.company_district_hq"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                      placeholder="Daerah" />
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">Daerah</label>
+              <select v-model="form.company_info.company_district_hq"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                <option value="">-- Pilih Daerah --</option>
+                <option v-for="district in companyHqDistrictOptions" :key="`company-hq-district-${district}`" :value="district">
+                  {{ district }}
+                </option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">No Telefon</label>
+              <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-200">No Telefon</label>
               <input v-model="form.company_info.company_phone_hq"
-                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl"
-                      placeholder="No Telefon" />
+                     inputmode="numeric"
+                     pattern="[0-9]*"
+                     @input="form.company_info.company_phone_hq = enforceNumericValue($event)"
+                      class="input border border-gray-300 w-full px-3 py-2 rounded-xl dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
+                      placeholder="Masukkan No Telefon" />
             </div>
           </div>
 
-          <hr class="my-6 border-t border-gray-200" />
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
 
           <div class="overflow-auto">
             <div class="flex justify-between items-center mb-2">
-              <h2 class="text-lg font-semibold">Jenis Lesen Yang Dipohon</h2>
-              <button type="button" @click="addLicenseTypeRow" class="px-3 py-1 bg-green-600 text-white rounded-xl">Add Row</button>
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Jenis Lesen Yang Dipohon</h2>
+              <button type="button" @click="addLicenseTypeRow" class="px-3 py-1 bg-green-600 text-white rounded-xl dark:bg-green-500">Add Row</button>
             </div>
-            <table class="w-full table-auto border-collapse">
+            <table class="w-full table-auto border-collapse text-slate-900 dark:text-slate-100">
               <thead>
-                <tr class="bg-gray-100">
+                <tr class="bg-gray-100 dark:bg-slate-800">
                   <th class="border px-2 py-1 text-center">No</th>
                   <th class="border px-2 py-1 text-left">Aktiviti Perniagaan Dijalankan</th>
                   <th class="border px-2 py-1 text-left">Keluasan (m³)</th>
@@ -684,38 +807,46 @@ function handleDocumentChange(index: number, event: Event) {
                 <tr v-for="(row, rIndex) in form.company_info.license_type" :key="rIndex">
                   <td class="border px-2 py-1 text-center">{{ rIndex + 1 }}</td>
                   <td class="border px-2 py-1">
-                    <input v-model="row.aktiviti" class="w-full px-2 py-1 rounded-xl border border-gray-300" />
+                    <input v-model="row.aktiviti" class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                   </td>
                   <td class="border px-2 py-1">
-                    <input v-model="row.keluasan" class="w-full px-2 py-1 rounded-xl border border-gray-300" />
+                    <input v-model="row.keluasan"
+                           inputmode="numeric"
+                           pattern="[0-9]*"
+                           @input="row.keluasan = enforceNumericValue($event)"
+                           class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                   </td>
                   <td class="border px-2 py-1">
-                    <input v-model="row.unit_bilik" class="w-full px-2 py-1 rounded-xl border border-gray-300" />
+                    <input v-model="row.unit_bilik"
+                           inputmode="numeric"
+                           pattern="[0-9]*"
+                           @input="row.unit_bilik = enforceNumericValue($event)"
+                           class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                   </td>
                   <td class="border px-2 py-1 text-center">
-                    <button type="button" @click="removeLicenseTypeRow(rIndex)" class="px-2 py-1 bg-red-600 text-white rounded-xl" :disabled="form.company_info.license_type.length <= 1">Remove</button>
+                    <button type="button" @click="removeLicenseTypeRow(rIndex)" class="px-2 py-1 bg-red-600 text-white rounded-xl dark:bg-red-500" :disabled="form.company_info.license_type.length <= 1">Remove</button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <hr class="my-6 border-t border-gray-200" />
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
         </div>
 
         <!-- STEP 3 -->
         <div v-if="step === 3">
-          <hr class="my-6 border-t border-gray-200" />
-          <h2 class="text-xl font-bold mb-4">Maklumat Iklan / Papan Tanda</h2>
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
+          <h2 class="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Maklumat Iklan / Papan Tanda</h2>
 
           <div class="mt-4">
             <div class="flex justify-between items-center mb-2">
-              <label class="block text-sm font-medium">Butiran Iklan / Papan Tanda</label>
-              <button type="button" @click="addAdvertismentRow" class="px-3 py-1 bg-green-600 text-white rounded-xl">Add Row</button>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">Butiran Iklan / Papan Tanda</label>
+              <button type="button" @click="addAdvertismentRow" class="px-3 py-1 bg-green-600 text-white rounded-xl dark:bg-green-500">Add Row</button>
             </div>
             <div class="overflow-auto">
-              <table class="w-full table-auto border-collapse">
+              <table class="w-full table-auto border-collapse text-slate-900 dark:text-slate-100">
                 <thead>
-                  <tr class="bg-gray-100">
+                  <tr class="bg-gray-100 dark:bg-slate-800">
                     <th class="border px-2 py-1 text-center">No</th>
                     <th class="border px-2 py-1 text-left">Jenis Iklan</th>
                     <th class="border px-2 py-1 text-left">Cara Pemasangan</th>
@@ -729,178 +860,457 @@ function handleDocumentChange(index: number, event: Event) {
                   <tr v-for="(row, rIndex) in form.advertisment_info.dynamic_table_rows" :key="rIndex">
                     <td class="border px-2 py-1 text-center">{{ rIndex + 1 }}</td>
                     <td class="border px-2 py-1">
-                      <select v-model="row.type" class="w-full px-2 py-1 rounded-xl border border-gray-300">
+                      <select v-model="row.type" class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
                         <option value="">-- Pilih --</option>
                         <option v-for="opt in advertismentOptions1" :key="opt" :value="opt">{{ opt }}</option>
                       </select>
                     </td>
                     <td class="border px-2 py-1">
-                      <select v-model="row.structure" class="w-full px-2 py-1 rounded-xl border border-gray-300">
+                      <select v-model="row.structure" class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
                         <option value="">-- Pilih --</option>
                         <option v-for="opt in advertismentOptions2" :key="opt" :value="opt">{{ opt }}</option>
                       </select>
                     </td>
                     <td class="border px-2 py-1">
-                      <input v-model="row.length" class="w-full px-2 py-1 rounded-xl border border-gray-300" />
+                      <input v-model="row.length"
+                             inputmode="numeric"
+                             pattern="[0-9]*"
+                             @input="row.length = enforceNumericValue($event)"
+                             class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                     </td>
                     <td class="border px-2 py-1">
-                      <input v-model="row.width" class="w-full px-2 py-1 rounded-xl border border-gray-300" />
+                      <input v-model="row.width"
+                             inputmode="numeric"
+                             pattern="[0-9]*"
+                             @input="row.width = enforceNumericValue($event)"
+                             class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                     </td>
                     <td class="border px-2 py-1">
-                      <input v-model="row.number_of_ads" class="w-full px-2 py-1 rounded-xl border border-gray-300" />
+                      <input v-model="row.number_of_ads"
+                             inputmode="numeric"
+                             pattern="[0-9]*"
+                             @input="row.number_of_ads = enforceNumericValue($event)"
+                             class="w-full px-2 py-1 rounded-xl border border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" />
                     </td>
                     <td class="border px-2 py-1 text-center">
-                      <button type="button" @click="removeAdvertismentRow(rIndex)" class="px-2 py-1 bg-red-600 text-white rounded-xl" :disabled="form.advertisment_info.dynamic_table_rows.length <= 1">Remove</button>
+                      <button type="button" @click="removeAdvertismentRow(rIndex)" class="px-2 py-1 bg-red-600 text-white rounded-xl dark:bg-red-500" :disabled="form.advertisment_info.dynamic_table_rows.length <= 1">Remove</button>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-        <hr class="my-6 border-t border-gray-200" />
+        <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
         </div>
 
         <!-- STEP 4 -->
         <div v-if="step === 4">
-          <hr class="my-6 border-t border-gray-200" />
-          <h2 class="text-xl font-bold mb-4">Dokumen Sokongan</h2>
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
+          <h2 class="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Dokumen Sokongan</h2>
           <div class="grid grid-cols-2 gap-6">
             <div class="space-y-4">
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Memorandum / Borang A / Borang B / Borang D</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Memorandum / Borang A / Borang B / Borang D</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(1, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document1Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document1Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Pelan lokasi premis beserta gambar premis [2 salinan]</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Pelan lokasi premis beserta gambar premis [2 salinan]</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(2, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document2Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document2Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Pelan lantai premis / kawasan (ukuran dalam meter persegi) [2 salinan] </label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Pelan lantai premis / kawasan (ukuran dalam meter persegi) [2 salinan] </label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(3, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document3Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document3Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Surat perjanjian atau kebenaran tuan bangunan / tanah yang disetemkan (jika bangunan / tanah yang disewa)</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Surat perjanjian atau kebenaran tuan bangunan / tanah yang disetemkan (jika bangunan / tanah yang disewa)</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(4, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document4Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document4Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Salinan geran tanah / Lesen Pendudukan Sementara (LPS) / lain-lain dokumen yang berkaitan</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Salinan geran tanah / Lesen Pendudukan Sementara (LPS) / lain-lain dokumen yang berkaitan</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(5, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document5Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document5Name || 'No file chosen' }}</span>
                 </div>
               </div>
             </div>
 
             <div class="space-y-4">
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Salinan Sijil Kelayakan Menduduki Bangunan / Sementara (CF/CCC) (TCF)</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Salinan Sijil Kelayakan Menduduki Bangunan / Sementara (CF/CCC) (TCF)</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(6, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document6Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document6Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Gambar pemohon berukuran passport [2 keping]</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Gambar pemohon berukuran passport [2 keping]</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(7, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document7Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document7Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Salinan Kad Pengenalan pemohon</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Salinan Kad Pengenalan pemohon</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(8, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document8Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document8Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Senarai nama semua Pengendali Makanan / Pembantu (Perniagaan Makanan) serta 2 salinan Kad Pengenalan dan 2 keping gambar berukuran passport bagi setiap orang (jika berkenaan)</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Senarai nama semua Pengendali Makanan / Pembantu (Perniagaan Makanan) serta 2 salinan Kad Pengenalan dan 2 keping gambar berukuran passport bagi setiap orang (jika berkenaan)</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(9, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document9Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document9Name || 'No file chosen' }}</span>
                 </div>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-sm font-medium mb-1">Carta Proses Pengeluaran Pengilangan / Pemerosesan (jika ada)</label>
+                <label class="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Carta Proses Pengeluaran Pengilangan / Pemerosesan (jika ada)</label>
                 <div class="flex items-center gap-3">
-                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+                  <label class="inline-flex w-fit items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
                     <input type="file" class="hidden" @change="(e) => handleDocumentChange(10, e)" />
                     <span>Choose File</span>
                   </label>
-                  <span class="text-xs text-gray-600">{{ form.document10Name || 'No file chosen' }}</span>
+                  <span class="text-xs text-gray-600 dark:text-slate-400">{{ form.document10Name || 'No file chosen' }}</span>
                 </div>
               </div>
             </div>
           </div>
-          <hr class="my-6 border-t border-gray-200" />
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
         </div>
 
         <!-- STEP 5 -->
         <div v-if="step === 5">
-          <hr class="my-6 border-t border-gray-200" />
-          <h2 class="text-xl font-bold mb-4">Pengesahan</h2>
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
+          <h2 class="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Pengesahan</h2>
 
-          <label class="flex items-center gap-2">
+          <div class="mb-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-6">
+            <div class="space-y-8">
+              <section>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ stepTitles[0] }}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Nama Pemohon</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">No Kad Pengenalan</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.ic_no || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Tarikh Lahir</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ formatDate(form.applicant_info.birth_date) || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Tempat Lahir</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.birth_place || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Jantina</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.gender || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Warganegara</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.citizenship || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Agama</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.religion || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Bangsa</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.ethnicity || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Status Perkahwinan</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.marital_status || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Pekerjaan</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.occupation || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Pendapatan (RM)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.income || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Alamat Kediaman</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.home_address || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Poskod</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.postcode || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Negeri</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.state || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Daerah</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.district || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">No Telefon</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.phone_number || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Emel</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.applicant_info.email || '-' }}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ stepTitles[1] }}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Nama Perniagaan / Syarikat</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Alamat Perniagaan (Premis)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_address || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Poskod</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_postcode || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Negeri</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_state || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Daerah</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_district || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">No Telefon</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_phone || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">No Pendaftaran</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_registration_number || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Tarikh Daftar</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ formatDate(form.company_info.company_registration_date) || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Tarikh Tamat</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ formatDate(form.company_info.company_registration_expiry_date) || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Bilangan Pekerja Melayu</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.employee_malay || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Bilangan Pekerja Cina</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.employee_chinese || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Bilangan Pekerja India</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.employee_indian || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Bilangan Pekerja Lain-lain</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.employee_others || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Waktu Beroperasi (Mula)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_operation_start || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Waktu Beroperasi (Tamat)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_operation_end || '-' }}</div>
+                  </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Alamat Perniagaan (Ibu Pejabat)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_address_hq || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Poskod (Ibu Pejabat)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_postcode_hq || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Negeri (Ibu Pejabat)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_state_hq || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Daerah (Ibu Pejabat)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_district_hq || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">No Telefon (Ibu Pejabat)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.company_info.company_phone_hq || '-' }}</div>
+                  </div>
+                </div>
+
+                <div class="mt-6">
+                  <div class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Jenis Lesen Yang Dipohon</div>
+                  <div class="space-y-3">
+                    <div v-for="(row, idx) in form.company_info.license_type" :key="`summary-license-${idx}`" class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                      <div class="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Lesen #{{ idx + 1 }}</div>
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Aktiviti</div>
+                          <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.aktiviti || '-' }}</div>
+                        </div>
+                        <div>
+                          <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Keluasan (m³)</div>
+                          <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.keluasan || '-' }}</div>
+                        </div>
+                        <div>
+                          <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Unit / Bil Bilik</div>
+                          <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.unit_bilik || '-' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ stepTitles[2] }}</h3>
+                <div class="space-y-3">
+                  <div v-for="(row, idx) in form.advertisment_info.dynamic_table_rows" :key="`summary-ads-${idx}`" class="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Iklan #{{ idx + 1 }}</div>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      <div>
+                        <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Jenis Iklan</div>
+                        <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.type || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Cara Pemasangan</div>
+                        <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.structure || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Panjang (M)</div>
+                        <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.length || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Lebar (M)</div>
+                        <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.width || '-' }}</div>
+                      </div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Bil Iklan</div>
+                        <div class="text-sm text-slate-900 dark:text-slate-100">{{ row.number_of_ads || '-' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ stepTitles[3] }}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Memorandum / Borang A / Borang B / Borang D</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document1Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Pelan lokasi premis beserta gambar premis</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document2Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Pelan lantai premis / kawasan</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document3Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Surat perjanjian / kebenaran tuan bangunan</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document4Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Salinan geran tanah / LPS</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document5Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Salinan CF/CCC (TCF)</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document6Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Gambar pemohon berukuran passport</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document7Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Salinan Kad Pengenalan pemohon</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document8Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Senarai nama semua Pengendali Makanan</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document9Name || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-400">Carta Proses Pengeluaran</div>
+                    <div class="text-sm text-slate-900 dark:text-slate-100">{{ form.document10Name || '-' }}</div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <label class="flex items-center gap-2 text-slate-700 dark:text-slate-200">
             <input type="checkbox" v-model="form.declaration.agree" />
             Dengan ini saya mengaku bahawa semua maklumat yang tercatat di dalam borang ini dan Lampiran-lampiran yang disertakan adalah betul dan benar.<br> Saya berjanji akan mematuhi segala syarat-syarat lesen yang ditetapkan.
           </label>
-          <hr class="my-6 border-t border-gray-200" />
+          <hr class="my-6 border-t border-gray-200 dark:border-slate-700" />
         </div>
       </div>
 
       <!-- Navigation -->
       <div class="mt-6 flex items-center">
         <div>
-          <button v-if="step > 1"
+            <button v-if="step > 1"
                   @click="prevStep"
-                  class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer">
+              class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
             ← Kembali
           </button>
         </div>
@@ -915,7 +1325,7 @@ function handleDocumentChange(index: number, event: Event) {
           <button v-if="step === 5"
                   @click="submitForm"
                   :disabled="!form.declaration.agree || isSubmitting"
-                  class="px-4 py-2 bg-black text-white rounded-xl cursor-pointer">
+                  class="px-4 py-2 bg-black text-white rounded-xl cursor-pointer dark:bg-slate-100 dark:text-slate-900">
             {{ isSubmitting ? 'Sedang dihantar...' : 'Hantar Permohonan' }}
           </button>
         </div>

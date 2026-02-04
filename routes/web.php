@@ -29,4 +29,36 @@ Route::post('/license/apply', [LicenseApplicationController::class, 'store'])
     ->middleware(['auth'])
     ->name('license.apply.store');
 
+Route::get('/license/payment/start', [LicenseApplicationController::class, 'startPayment'])
+    ->middleware(['auth'])
+    ->name('license.payment.start');
+
+Route::get('/license/payment/return', [LicenseApplicationController::class, 'handlePaymentReturn'])
+    ->middleware(['auth'])
+    ->name('license.payment.return');
+
+Route::post('/license/payment/callback', [LicenseApplicationController::class, 'handlePaymentCallback'])
+    ->name('license.payment.callback');
+
+// Admin License Application Routes
+Route::get('/admin/license-applications', [LicenseApplicationController::class, 'adminIndex'])
+    ->middleware(['auth'])
+    ->name('admin.license.index');
+
+Route::get('/admin/license-applications/{application}', [LicenseApplicationController::class, 'adminShow'])
+    ->middleware(['auth'])
+    ->name('admin.license.show');
+
+Route::post('/admin/license-applications/{application}/approve', [LicenseApplicationController::class, 'approve'])
+    ->middleware(['auth'])
+    ->name('admin.license.approve');
+
+Route::post('/admin/license-applications/{application}/reject', [LicenseApplicationController::class, 'reject'])
+    ->middleware(['auth'])
+    ->name('admin.license.reject');
+
+Route::get('/admin/license-documents/{document}', [LicenseApplicationController::class, 'adminDocument'])
+    ->middleware(['auth'])
+    ->name('admin.license.document');
+
 require __DIR__.'/settings.php';

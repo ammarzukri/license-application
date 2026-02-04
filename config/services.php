@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'toyyibpay' => [
+        'key' => env('TOYYIBPAY_API_KEY'),
+        'category_code' => env('TOYYIBPAY_CATEGORY_CODE'),
+        'sandbox' => env('TOYYIBPAY_SANDBOX', true),
+    ],
+
 ];

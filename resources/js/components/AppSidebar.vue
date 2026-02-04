@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { App, Link, usePage } from '@inertiajs/vue3';
+import { FolderOpen, AppWindow, Airplay } from 'lucide-vue-next';
 
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,23 +16,48 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { apply as licenseApply } from '@/routes/license';
+import { apply as licenseApply, status as licenseStatus } from '@/routes/license';
 import { type NavItem } from '@/types';
 
 import AppLogo from './AppLogo.vue';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Mohon Lesen Penginapan',
-        href: licenseApply(),
-        icon: BookOpen,
-    },
-];
+const page = usePage();
+const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
+const hasLicenseApplication = computed(
+    () => Boolean(page.props.hasLicenseApplication),
+);
+
+const mainNavItems = computed<NavItem[]>(() => {
+    if (isAdmin.value) {
+        return [
+            {
+                title: 'Dashboard',
+                href: dashboard(),
+                icon: Airplay,
+            },
+            {
+                title: 'Senarai Permohonan',
+                href: '/admin/license-applications',
+                icon: FolderOpen,
+            },
+        ];
+    }
+
+    return [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: Airplay,
+        },
+        {
+            title: hasLicenseApplication.value
+                ? 'Status Lesen Penginapan'
+                : 'Mohon Lesen Penginapan',
+            href: hasLicenseApplication.value ? licenseStatus() : licenseApply(),
+            icon: AppWindow,
+        },
+    ];
+});
 </script>
 
 <template>

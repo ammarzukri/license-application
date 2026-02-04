@@ -11,7 +11,9 @@ class LicenseApplication extends Model
     protected $fillable = [
         'name',
         'user_id',
+        'pbt_name',
         'ic_no',
+        'status',
         'birth_date',
         'birth_place',
         'gender',
@@ -47,6 +49,11 @@ class LicenseApplication extends Model
         'company_state_hq',
         'company_district_hq',
         'company_phone_hq',
+        'payment_status',
+        'payment_amount',
+        'payment_billcode',
+        'payment_attempted_at',
+        'payment_paid_at',
     ];
 
     public function licenseTypes()

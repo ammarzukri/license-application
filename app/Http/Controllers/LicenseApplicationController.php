@@ -5,10 +5,18 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use App\Models\LicenseApplication;
+use App\Models\LicenseDocument;
 
 class LicenseApplicationController extends Controller
 {
+    protected function ensureAdmin(): void
+    {
+        abort_unless(auth()->user()?->role === 'admin', 403);
+    }
+
     public function create()
     {
         $existingApplication = LicenseApplication::where('user_id', auth()->id())->first();
@@ -32,9 +40,244 @@ class LicenseApplicationController extends Controller
         ]);
     }
 
+    public function startPayment(Request $request)
+    {
+        $application = LicenseApplication::where('user_id', auth()->id())
+            ->latest('id')
+            ->first();
+
+        if (! $application) {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Tiada rekod permohonan ditemui.',
+            ]);
+        }
+
+        if ($application->status !== 'Diluluskan') {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Permohonan belum diluluskan untuk pembayaran.',
+            ]);
+        }
+
+        if ($application->payment_status === 'Berjaya') {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'success',
+                'message' => 'Pembayaran telah berjaya.',
+            ]);
+        }
+
+        $amountInCents = 10000;
+        $baseUrl = $this->toyyibpayBaseUrl();
+
+        $secretKey = config('services.toyyibpay.key') ?? env('TOYYIBPAY_API_KEY');
+        $categoryCode = config('services.toyyibpay.category_code') ?? env('TOYYIBPAY_CATEGORY_CODE');
+
+        if (! $secretKey || ! $categoryCode) {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Tetapan pembayaran tidak lengkap. Sila hubungi pentadbir.',
+            ]);
+        }
+
+        $response = Http::asForm()->post($baseUrl.'/index.php/api/createBill', [
+            'userSecretKey' => $secretKey,
+            'categoryCode' => $categoryCode,
+            'billName' => 'Bayaran Lesen',
+            'billDescription' => 'Bayaran lesen perniagaan',
+            'billPriceSetting' => 1,
+            'billPayorInfo' => 1,
+            'billAmount' => $amountInCents,
+            'billReturnUrl' => route('license.payment.return'),
+            'billCallbackUrl' => route('license.payment.callback'),
+            'billExternalReferenceNo' => (string) $application->id,
+            'billTo' => $application->name ?? 'Pemohon',
+            'billEmail' => $application->email ?? auth()->user()?->email ?? 'no-reply@example.com',
+            'billPhone' => $application->phone_number ?? '',
+        ]);
+
+        if (! $response->successful()) {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Gagal memulakan pembayaran. Sila cuba lagi.',
+            ]);
+        }
+
+        $payload = $response->json();
+        $billCode = data_get($payload, '0.BillCode') ?? data_get($payload, 'BillCode');
+
+        if (! $billCode) {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Gagal memulakan pembayaran. Sila cuba lagi.',
+            ]);
+        }
+
+        $application->update([
+            'payment_status' => 'Dalam Proses',
+            'payment_amount' => $amountInCents,
+            'payment_billcode' => $billCode,
+            'payment_attempted_at' => now(),
+        ]);
+
+        $paymentUrl = $baseUrl.'/'.$billCode;
+
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($paymentUrl);
+        }
+
+        return redirect()->away($paymentUrl);
+    }
+
+    public function handlePaymentReturn(Request $request)
+    {
+        $billCode = $request->query('billcode') ?? $request->query('billCode');
+
+        if (! $billCode) {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Maklumat pembayaran tidak ditemui.',
+            ]);
+        }
+
+        $application = LicenseApplication::where('payment_billcode', $billCode)
+            ->where('user_id', auth()->id())
+            ->latest('id')
+            ->first();
+
+        if (! $application) {
+            return redirect()->route('license.status')->with('payment', [
+                'status' => 'error',
+                'message' => 'Rekod pembayaran tidak ditemui.',
+            ]);
+        }
+
+        $paymentSuccess = $this->syncToyyibpayStatus($billCode, $application);
+
+        return redirect()->route('license.status')->with('payment', [
+            'status' => $paymentSuccess ? 'success' : 'error',
+            'message' => $paymentSuccess
+                ? 'Pembayaran berjaya. Terima kasih.'
+                : 'Pembayaran gagal. Sila cuba lagi.',
+        ]);
+    }
+
+    public function handlePaymentCallback(Request $request)
+    {
+        $billCode = $request->input('billcode') ?? $request->input('billCode');
+
+        if (! $billCode) {
+            return response()->json(['status' => 'missing-billcode'], 400);
+        }
+
+        $application = LicenseApplication::where('payment_billcode', $billCode)
+            ->latest('id')
+            ->first();
+
+        if (! $application) {
+            return response()->json(['status' => 'not-found'], 404);
+        }
+
+        $this->syncToyyibpayStatus($billCode, $application);
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    protected function syncToyyibpayStatus(string $billCode, LicenseApplication $application): bool
+    {
+        $baseUrl = $this->toyyibpayBaseUrl();
+
+        $response = Http::asForm()->post($baseUrl.'/index.php/api/getBillTransactions', [
+            'billCode' => $billCode,
+        ]);
+
+        $payload = $response->json();
+        $paymentStatus = data_get($payload, '0.billpaymentStatus')
+            ?? data_get($payload, 'billpaymentStatus');
+
+        $isSuccess = in_array((string) $paymentStatus, ['1', 'success', 'SUCCESS'], true);
+
+        $application->update([
+            'payment_status' => $isSuccess ? 'Berjaya' : 'Gagal',
+            'payment_paid_at' => $isSuccess ? now() : null,
+        ]);
+
+        return $isSuccess;
+    }
+
+    protected function toyyibpayBaseUrl(): string
+    {
+        return config('services.toyyibpay.sandbox') ? 'https://dev.toyyibpay.com' : 'https://toyyibpay.com';
+    }
+
+    public function adminIndex()
+    {
+        $this->ensureAdmin();
+
+        $applications = LicenseApplication::query()
+            ->latest('id')
+            ->get([
+                'id',
+                'name',
+                'ic_no',
+                'company_name',
+                'status',
+                'created_at',
+            ]);
+
+        return Inertia::render('admin/LicenseApplications', [
+            'applications' => $applications,
+        ]);
+    }
+
+    public function adminShow(LicenseApplication $application)
+    {
+        $this->ensureAdmin();
+
+        $application->load(['licenseTypes', 'advertisementInfos', 'documents']);
+
+        return Inertia::render('admin/LicenseApplicationShow', [
+            'application' => $application,
+        ]);
+    }
+
+    public function approve(LicenseApplication $application)
+    {
+        $this->ensureAdmin();
+
+        $application->update([
+            'status' => 'Diluluskan',
+        ]);
+
+        return redirect()->back();
+    }
+
+    public function reject(LicenseApplication $application)
+    {
+        $this->ensureAdmin();
+
+        $application->update([
+            'status' => 'Ditolak',
+        ]);
+
+        return redirect()->back();
+    }
+
+    public function adminDocument(LicenseDocument $document)
+    {
+        $this->ensureAdmin();
+
+        if (!Storage::disk('local')->exists($document->file_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($document->file_path);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
+            'pbt_name' => ['nullable', 'string'],
             'applicant_info' => ['required', 'array'],
             'company_info' => ['required', 'array'],
             'license_type' => ['nullable', 'array'],
@@ -51,7 +294,9 @@ class LicenseApplicationController extends Controller
             $licenseApplication = LicenseApplication::create([
                 'name' => $applicant['name'] ?? null,
                 'user_id' => auth()->id(),
+                'pbt_name' => $request->input('pbt_name'),
                 'ic_no' => $applicant['ic_no'] ?? null,
+                'status' => 'Dalam Proses',
                 'birth_date' => $applicant['birth_date'] ?? null,
                 'birth_place' => $applicant['birth_place'] ?? null,
                 'gender' => $applicant['gender'] ?? null,
